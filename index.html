@@ -1,0 +1,1445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TMJH - Average Rate Calculator</title>
+  
+  <!-- Required Scripts for High-Resolution PDF Export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <style>
+    /* =========================================================
+       CSS VARIABLES & THEMING (Main UI)
+       ========================================================= */
+    :root {
+      /* Light Mode - Premium Cream */
+      --bg-base: #F9F8F6;
+      --text-main: #1C1C1C;
+      --text-muted: rgba(28, 28, 28, 0.6);
+      --card-bg: rgba(255, 255, 255, 0.8);
+      --card-border: #E5E5E5;
+      --input-bg: #F5F5F5;
+      --input-border: #E0E0E0;
+      --input-focus: #B0B0B0;
+      --btn-primary-bg: #1C1C1C;
+      --btn-primary-text: #FFFFFF;
+      --btn-primary-hover: #333333;
+      --summary-bg: #1C1C1C;
+      --summary-text: #FFFFFF;
+      --summary-accent: #E5D5B8;
+      --table-header: #F5F5F5;
+      --table-border: #EEEEEE;
+      --table-hover: #F9F9F9;
+      --danger-color: #EF4444;
+      --success-color: #10B981;
+    }
+
+    html.dark {
+      /* Dark Mode - Luxury Black */
+      --bg-base: #0A0A0A;
+      --text-main: #F5F5F7;
+      --text-muted: rgba(245, 245, 247, 0.6);
+      --card-bg: rgba(21, 21, 21, 0.8);
+      --card-border: #2A2A2A;
+      --input-bg: rgba(0, 0, 0, 0.5);
+      --input-border: #333333;
+      --input-focus: #666666;
+      --btn-primary-bg: #FFFFFF;
+      --btn-primary-text: #000000;
+      --btn-primary-hover: #E0E0E0;
+      --summary-bg: #1C1C1C;
+      --summary-text: #FFFFFF;
+      --summary-accent: #E5D5B8;
+      --table-header: rgba(30, 30, 30, 0.5);
+      --table-border: #2A2A2A;
+      --table-hover: rgba(40, 40, 40, 0.5);
+    }
+
+    /* =========================================================
+       RESET & TYPOGRAPHY
+       ========================================================= */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      transition: background-color 0.5s ease, color 0.5s ease;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.5;
+    }
+
+    /* =========================================================
+       LAYOUT & IMAGES
+       ========================================================= */
+    .app-container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 3rem 2rem;
+      position: relative;
+      z-index: 10;
+    }
+
+    .watermark {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 500px;
+      height: 500px;
+      object-fit: contain;
+      opacity: 0.04;
+      z-index: 0;
+      pointer-events: none;
+      user-select: none;
+      transition: opacity 0.5s ease;
+    }
+
+    html.dark .watermark { opacity: 0.03; }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 3rem;
+    }
+
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .header-logo {
+      height: 60px;
+      width: auto;
+      object-fit: contain;
+    }
+
+    .logo-text-wrapper {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .logo-text {
+      font-size: 2.5rem;
+      font-weight: 900;
+      letter-spacing: -0.05em;
+      line-height: 1;
+      margin-bottom: 0.25rem;
+    }
+
+    .tagline {
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .theme-toggle {
+      display: flex;
+      gap: 0.5rem;
+      background: var(--card-bg);
+      backdrop-filter: blur(10px);
+      padding: 0.35rem;
+      border-radius: 99px;
+      border: 1px solid var(--card-border);
+    }
+
+    .theme-btn {
+      background: transparent;
+      border: none;
+      padding: 0.5rem;
+      border-radius: 50%;
+      cursor: pointer;
+      color: var(--text-main);
+      opacity: 0.5;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .theme-btn.active {
+      opacity: 1;
+      background: var(--bg-base);
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .grid-layout {
+      display: grid;
+      grid-template-columns: 7fr 5fr;
+      gap: 2.5rem;
+    }
+
+    @media (max-width: 1024px) {
+      .grid-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* =========================================================
+       COMPONENTS (Cards, Inputs, Buttons)
+       ========================================================= */
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--card-border);
+      border-radius: 1rem;
+      padding: 2rem;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
+      margin-bottom: 1.5rem;
+    }
+
+    .card-title {
+      font-size: 0.875rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    @media (max-width: 640px) {
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .input-group label {
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .input {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      background: var(--input-bg);
+      border: 1px solid var(--input-border);
+      border-radius: 0.75rem;
+      color: var(--text-main);
+      font-family: inherit;
+      font-size: 0.875rem;
+      font-weight: 500;
+      outline: none;
+      transition: border-color 0.3s ease;
+    }
+    
+    .input:focus { border-color: var(--input-focus); }
+
+    .input-large {
+      padding: 1rem;
+      font-size: 1.125rem;
+    }
+
+    .input:read-only {
+      background: var(--bg-base);
+      border-color: transparent;
+      box-shadow: inset 0 0 0 1px var(--card-border);
+      color: var(--text-main);
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.75rem 1rem;
+      border-radius: 0.75rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: none;
+      font-family: inherit;
+    }
+
+    .btn-primary {
+      background: var(--btn-primary-bg);
+      color: var(--btn-primary-text);
+      height: 100%;
+      min-height: 42px;
+    }
+
+    .btn-primary:hover { background: var(--btn-primary-hover); }
+
+    /* =========================================================
+       TABLE
+       ========================================================= */
+    .table-container {
+      overflow-x: auto;
+      border: 1px solid var(--card-border);
+      border-radius: 0.75rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    th {
+      background: var(--table-header);
+      padding: 1rem;
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--table-border);
+      cursor: pointer;
+      user-select: none;
+    }
+    
+    th:hover { color: var(--text-main); }
+    th .sort-icon { margin-left: 4px; opacity: 0.3; }
+
+    td {
+      padding: 1rem;
+      font-size: 0.875rem;
+      border-bottom: 1px solid var(--table-border);
+      font-variant-numeric: tabular-nums;
+    }
+
+    tr:last-child td { border-bottom: none; }
+    tbody tr { transition: background-color 0.2s ease; }
+    tbody tr:hover { background: var(--table-hover); }
+
+    .text-right { text-align: right; }
+    .text-center { text-align: center; }
+
+    .action-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 0.25rem;
+      margin: 0 0.25rem;
+      transition: color 0.2s ease;
+    }
+
+    .action-btn:hover.edit { color: var(--text-main); }
+    .action-btn:hover.delete { color: var(--danger-color); }
+    .action-btn.save { color: var(--success-color); }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem !important;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      font-weight: 600;
+    }
+
+    /* =========================================================
+       SUMMARY SECTION
+       ========================================================= */
+    .summary-card {
+      background: var(--summary-bg);
+      color: var(--summary-text);
+      border: none;
+    }
+
+    .summary-card .card-title { color: rgba(255, 255, 255, 0.6); }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .summary-label {
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .summary-val {
+      font-size: 0.875rem;
+      font-weight: 500;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .summary-val.large { font-size: 1rem; font-weight: 600; }
+
+    .divider { height: 1px; background: rgba(255, 255, 255, 0.1); margin: 1rem 0; }
+    .divider-light { height: 1px; background: var(--card-border); margin: 1.5rem 0; }
+
+    .average-rate-block { margin-top: 1.5rem; }
+    .average-rate-val {
+      font-size: 3rem;
+      font-weight: 900;
+      color: var(--summary-accent);
+      line-height: 1;
+      margin-top: 0.5rem;
+      word-break: break-word;
+    }
+
+    .average-rate-val span { font-size: 1.25rem; font-weight: 500; color: rgba(255,255,255,0.5); }
+
+    .action-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem;
+    }
+
+    .action-card-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      cursor: pointer;
+      color: var(--text-main);
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+
+    .action-card-btn:hover { background: var(--table-hover); }
+    .action-card-btn.danger { color: var(--danger-color); }
+    .action-card-btn.danger:hover { background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.2); }
+    .action-card-btn span {
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-top: 0.5rem;
+      opacity: 0.7;
+    }
+
+    /* =========================================================
+       SEARCH & OVERLAYS
+       ========================================================= */
+    .search-box {
+      display: flex;
+      align-items: center;
+      background: var(--input-bg);
+      border: 1px solid var(--input-border);
+      border-radius: 0.5rem;
+      padding: 0.4rem 0.75rem;
+    }
+    
+    .search-box input {
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text-main);
+      font-size: 0.75rem;
+      margin-left: 0.5rem;
+      width: 150px;
+    }
+
+    #toast-container {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      z-index: 9999;
+    }
+
+    .toast {
+      background: var(--card-bg);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 1rem 1.25rem;
+      border-radius: 0.75rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      animation: slideIn 0.3s ease forwards;
+    }
+
+    .toast.success svg { color: var(--success-color); }
+    .toast.error svg { color: var(--danger-color); }
+
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes fadeOut {
+      from { opacity: 1; }
+      to { opacity: 0; }
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+    }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+    .modal-content {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 1rem;
+      padding: 2rem;
+      width: 90%;
+      max-width: 400px;
+      transform: translateY(20px);
+      transition: all 0.3s ease;
+    }
+    .modal-overlay.active .modal-content { transform: translateY(0); }
+    .modal-title { font-size: 1.125rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .modal-text { font-size: 0.875rem; color: var(--text-muted); margin-bottom: 2rem; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 1rem; }
+    .btn-cancel { background: transparent; border: 1px solid var(--card-border); color: var(--text-main); }
+    .btn-danger { background: var(--danger-color); color: white; }
+
+    /* =========================================================
+       DEDICATED PDF & PRINT RECEIPT ENGINE (PREMIUM INVOICE)
+       ========================================================= */
+    #pdfReceiptWrapper {
+      position: absolute;
+      top: 0;
+      left: -9999px; /* Hide from viewport during normal usage */
+      
+      /* True A4 Proportion (scaled for high res HTML rendering) */
+      width: 794px;
+      min-height: 1123px;
+      
+      background-color: #FFFFFF;
+      padding: 15mm;
+      box-sizing: border-box;
+      
+      /* Strict Professional Typography */
+      font-family: 'Helvetica', 'Arial', 'Inter', 'Segoe UI', sans-serif;
+      color: #111111;
+      z-index: -100;
+    }
+
+    .r-inner-border {
+      border: 1px solid #D4AF37;
+      width: 100%;
+      min-height: calc(1123px - 30mm);
+      padding: 15mm;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* Giant Subtle Watermark perfectly centered inside border */
+    .r-watermark {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 500px;
+      height: 500px;
+      object-fit: contain;
+      opacity: 0.02; /* Exact 2% Opacity per requirements */
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .r-content {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      flex-grow: 1;
+    }
+
+    /* Header */
+    .r-header {
+      text-align: center;
+      margin-bottom: 5mm;
+    }
+    .r-header img {
+      height: 22mm;
+      width: auto;
+      object-fit: contain;
+      margin-bottom: 5mm;
+    }
+    .r-header h1 { 
+      font-size: 26pt; 
+      font-weight: 700; 
+      margin: 0; 
+      color: #111; 
+      letter-spacing: 2px; 
+    }
+    .r-header h2 { 
+      font-size: 11pt; 
+      font-weight: 500; 
+      margin: 3mm 0 0 0; 
+      color: #D4AF37; 
+      letter-spacing: 2px; 
+    }
+
+    /* Meta Info */
+    .r-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10pt;
+      color: #666;
+      margin-top: 8mm;
+      margin-bottom: 4mm;
+    }
+    .r-divider {
+      height: 1px;
+      background-color: #D4AF37;
+      width: 100%;
+      margin-bottom: 8mm;
+    }
+
+    /* Section Titles */
+    .r-section-title {
+      font-size: 12pt;
+      font-weight: 600;
+      color: #D4AF37;
+      letter-spacing: 1.5px;
+      margin-top: 0;
+      margin-bottom: 6mm;
+      text-transform: uppercase;
+    }
+
+    /* Table */
+    .r-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 12mm;
+    }
+    .r-table th {
+      text-align: right;
+      color: #666666;
+      font-weight: 500;
+      font-size: 10pt;
+      border-bottom: 1px solid #E5E5E5;
+      padding-bottom: 4mm;
+    }
+    .r-table th:first-child { text-align: left; }
+    
+    .r-table td {
+      text-align: right;
+      font-size: 11pt;
+      color: #111111;
+      padding: 5mm 0;
+      border-bottom: 1px solid #F5F5F5;
+      font-variant-numeric: tabular-nums;
+    }
+    .r-table td:first-child { text-align: left; }
+
+    /* Summary */
+    .r-summary {
+      display: flex;
+      flex-direction: column;
+      gap: 4mm;
+      margin-bottom: 10mm;
+    }
+    .r-summary-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11pt;
+      color: #666666;
+    }
+    .r-summary-row .val { 
+      color: #111111; 
+      font-weight: 500; 
+      font-variant-numeric: tabular-nums; 
+    }
+    .r-summary-row.bold .lbl { font-weight: 600; color: #111111; }
+    .r-summary-row.bold .val { font-weight: 700; font-size: 12pt; color: #111111; }
+    
+    .r-divider-light {
+      height: 1px;
+      background-color: #E5E5E5;
+      margin: 2mm 0;
+    }
+
+    /* Average Rate Box */
+    .r-avg-box {
+      border: 1px solid #D4AF37;
+      background-color: #FFF9F2;
+      border-radius: 8px;
+      padding: 8mm 10mm;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 5mm;
+    }
+    .r-avg-label { font-size: 12pt; font-weight: 600; color: #111111; }
+    .r-avg-val { font-size: 18pt; font-weight: 700; color: #111111; font-variant-numeric: tabular-nums; }
+
+    /* Footer */
+    .r-footer {
+      margin-top: auto; /* Push to absolute bottom of flex container */
+      padding-top: 20mm;
+      text-align: center;
+    }
+    .r-footer p { 
+      margin: 0; 
+      color: #666666; 
+      font-size: 9pt; 
+      letter-spacing: 1px; 
+      font-weight: 500; 
+    }
+    .r-footer p.small { 
+      color: #999999; 
+      font-size: 8pt; 
+      letter-spacing: 0; 
+      margin-top: 3mm; 
+      font-weight: 400; 
+    }
+
+    /* Print Override */
+    @media print {
+      body { background: #FFFFFF !important; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .app-container, .watermark, #toast-container, .modal-overlay { display: none !important; }
+      
+      #pdfReceiptWrapper {
+        position: relative !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        min-height: 100vh !important;
+        z-index: 100 !important;
+        padding: 8mm !important; /* Slightly reduced outer padding for safe printer margins */
+        box-shadow: none !important;
+        border: none !important;
+      }
+      .r-inner-border {
+        border: 1px solid #D4AF37 !important;
+        min-height: calc(100vh - 16mm) !important;
+      }
+      @page { size: A4 portrait; margin: 0; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- BACKGROUND WATERMARK (Main UI) -->
+  <img src="logo.png" class="watermark" alt="TMJH Watermark">
+
+  <!-- MAIN APP CONTAINER -->
+  <div class="app-container">
+    
+    <!-- HEADER -->
+    <header>
+      <div class="logo-container">
+        <!-- Official Custom Image Logo -->
+        <img src="logo.png" alt="TMJH Logo" class="header-logo">
+        
+        <div class="logo-text-wrapper">
+          <div class="logo-text">TMJH</div>
+          <div class="tagline">The Modern Jewellery House</div>
+        </div>
+      </div>
+      
+      <div class="theme-toggle">
+        <button class="theme-btn active" id="btnLight" title="Light Mode">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+        </button>
+        <button class="theme-btn" id="btnDark" title="Dark Mode">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <main class="grid-layout">
+      
+      <!-- LEFT COLUMN: PREVIOUS PURCHASES -->
+      <div class="left-col">
+        <div class="card">
+          <div class="card-title">
+            <span>Previous Purchases</span>
+            <div class="search-box">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.4"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              <input type="text" id="searchInput" placeholder="Search records...">
+            </div>
+          </div>
+          
+          <form id="addForm" class="form-grid">
+            <div class="input-group">
+              <label for="newDate">Date</label>
+              <input type="date" id="newDate" class="input" required>
+            </div>
+            <div class="input-group">
+              <label for="newAmount">Amount (₹)</label>
+              <input type="number" id="newAmount" class="input" step="0.01" min="0.01" placeholder="0.00" required>
+            </div>
+            <div class="input-group">
+              <label for="newRate">Rate (₹)</label>
+              <input type="number" id="newRate" class="input" step="0.01" min="0.01" placeholder="0.00" required>
+            </div>
+            <div class="input-group" style="justify-content: flex-end;">
+              <button type="submit" class="btn btn-primary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                Add
+              </button>
+            </div>
+          </form>
+
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th onclick="handleSort('date')">Date <span class="sort-icon" id="sort-date"></span></th>
+                  <th class="text-right" onclick="handleSort('amount')">Amount <span class="sort-icon" id="sort-amount"></span></th>
+                  <th class="text-right" onclick="handleSort('rate')">Rate <span class="sort-icon" id="sort-rate"></span></th>
+                  <th class="text-right" onclick="handleSort('gold')">Gold <span class="sort-icon" id="sort-gold"></span></th>
+                  <th class="text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="tableBody">
+                <!-- Rows injected via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN: TODAY & SUMMARY -->
+      <div class="right-col">
+        
+        <!-- Today's Purchase -->
+        <div class="card">
+          <div class="card-title"><span>Today's Purchase</span></div>
+          
+          <div class="input-group" style="margin-bottom: 1.25rem;">
+            <label for="todayRate">Today's Rate (₹ / g)</label>
+            <input type="number" id="todayRate" class="input input-large" step="0.01" min="0" placeholder="Enter current rate...">
+          </div>
+          
+          <div class="input-group" style="margin-bottom: 1.25rem;">
+            <label for="todayInvestment">Today's Investment (₹)</label>
+            <input type="number" id="todayInvestment" class="input input-large" step="0.01" min="0" placeholder="Enter investment amount...">
+          </div>
+          
+          <div class="input-group">
+            <label for="todayGoldCalc">Gold Weight (g) - Auto Calculated</label>
+            <input type="text" id="todayGoldCalc" class="input input-large" readonly tabindex="-1" placeholder="Calculates automatically">
+          </div>
+          
+          <div class="divider-light"></div>
+          
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.5;">Calculated Gold</span>
+            <span id="uiTodayGoldOutput" style="font-size: 1.25rem; font-weight: 700; font-variant-numeric: tabular-nums;">0.000 g</span>
+          </div>
+        </div>
+
+        <!-- Summary Card -->
+        <div class="card summary-card">
+          <div class="card-title"><span>Executive Summary</span></div>
+          
+          <div class="summary-row">
+            <span class="summary-label">Previous Amount</span>
+            <span class="summary-val" id="uiPrevAmount">₹0.00</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-label">Previous Gold</span>
+            <span class="summary-val" id="uiPrevGold">0.000 g</span>
+          </div>
+          
+          <div class="divider"></div>
+          
+          <div class="summary-row">
+            <span class="summary-label" style="color: white; opacity: 0.8;">Grand Amount</span>
+            <span class="summary-val large" id="uiGrandAmount">₹0.00</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-label" style="color: white; opacity: 0.8;">Grand Gold</span>
+            <span class="summary-val large" id="uiGrandGold">0.000 g</span>
+          </div>
+
+          <div class="divider" style="margin-bottom: 0;"></div>
+          
+          <div class="average-rate-block">
+            <span class="summary-label" style="display: block; margin-bottom: 0.5rem;">Final Average Rate</span>
+            <div class="average-rate-val">
+              <span id="uiAverageRateValue">₹0.00</span><span> / g</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="action-grid">
+          <button class="action-card-btn" onclick="triggerPrint()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
+            <span>Print</span>
+          </button>
+          <button class="action-card-btn" onclick="triggerPDFDownload()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+            <span>PDF</span>
+          </button>
+          <button class="action-card-btn danger" onclick="requestReset()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            <span>Reset</span>
+          </button>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- TOAST CONTAINER -->
+  <div id="toast-container"></div>
+
+  <!-- CONFIRMATION MODAL -->
+  <div class="modal-overlay" id="confirmModal">
+    <div class="modal-content">
+      <h3 class="modal-title" id="modalTitle">Confirm</h3>
+      <p class="modal-text" id="modalMessage">Are you sure?</p>
+      <div class="modal-actions">
+        <button class="btn btn-cancel" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-danger" id="modalConfirmBtn">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       DEDICATED PDF & PRINT RECEIPT ENGINE (HTML/CSS ONLY)
+       ========================================================= -->
+  <div id="pdfReceiptWrapper">
+    <div class="r-inner-border">
+      
+      <img src="logo.png" class="r-watermark" alt="TMJH Watermark">
+      
+      <div class="r-content">
+        
+        <div class="r-header">
+          <img src="logo.png" alt="TMJH Logo">
+          <h1>TMJH</h1>
+          <h2>THE MODERN JEWELLERY HOUSE</h2>
+        </div>
+
+        <div class="r-meta">
+          <div class="r-datetime">
+            <span id="rDate"></span> | <span id="rTime"></span>
+          </div>
+          <div id="rReceiptId" class="r-id"></div>
+        </div>
+        
+        <div class="r-divider"></div>
+
+        <h3 class="r-section-title">PURCHASE HISTORY</h3>
+        <table class="r-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Amount</th>
+              <th>Rate</th>
+              <th>Gold Weight</th>
+            </tr>
+          </thead>
+          <tbody id="rTableBody">
+            <!-- JS injected -->
+          </tbody>
+        </table>
+
+        <h3 class="r-section-title" style="margin-top: 10mm;">CALCULATION SUMMARY</h3>
+        <div class="r-summary">
+          <div class="r-summary-row">
+            <span class="lbl">Today's Rate</span>
+            <span class="val" id="rTodayRate"></span>
+          </div>
+          <div class="r-summary-row">
+            <span class="lbl">Today's Investment</span>
+            <span class="val" id="rTodayInvestment"></span>
+          </div>
+          <div class="r-summary-row">
+            <span class="lbl">Today's Gold</span>
+            <span class="val" id="rTodayGold"></span>
+          </div>
+          <div class="r-summary-row" style="margin-top: 2mm;">
+            <span class="lbl">Previous Amount</span>
+            <span class="val" id="rPrevAmount"></span>
+          </div>
+          <div class="r-summary-row">
+            <span class="lbl">Previous Gold</span>
+            <span class="val" id="rPrevGold"></span>
+          </div>
+          
+          <div class="r-divider-light"></div>
+          
+          <div class="r-summary-row bold">
+            <span class="lbl">Grand Amount</span>
+            <span class="val" id="rGrandAmount"></span>
+          </div>
+          <div class="r-summary-row bold">
+            <span class="lbl">Grand Gold</span>
+            <span class="val" id="rGrandGold"></span>
+          </div>
+        </div>
+        
+        <div class="r-avg-box">
+          <span class="r-avg-label">AVERAGE GOLD RATE</span>
+          <span class="r-avg-val" id="rAverageRate"></span>
+        </div>
+
+        <footer class="r-footer">
+          <p>THANK YOU FOR CHOOSING TMJH</p>
+          <p class="small">This is a computer generated document.</p>
+        </footer>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       JAVASCRIPT LOGIC
+       ========================================================= -->
+  <script>
+    // --- STATE ---
+    const STORAGE_KEY = 'tmjh_vanilla_data';
+    let state = {
+      purchases: [],
+      todayRate: '',
+      todayInvestment: '',
+      isDarkMode: false
+    };
+
+    let searchQuery = '';
+    let sortConfig = { key: 'date', direction: 'desc' };
+    let editingId = null;
+    let editForm = { date: '', amount: '', rate: '' };
+    let modalAction = null;
+
+    // --- DOM ELEMENTS ---
+    const htmlEl = document.documentElement;
+    const btnLight = document.getElementById('btnLight');
+    const btnDark = document.getElementById('btnDark');
+    const newDateInput = document.getElementById('newDate');
+    const newAmountInput = document.getElementById('newAmount');
+    const newRateInput = document.getElementById('newRate');
+    const addForm = document.getElementById('addForm');
+    const searchInput = document.getElementById('searchInput');
+    const tableBody = document.getElementById('tableBody');
+    const todayRateInput = document.getElementById('todayRate');
+    const todayInvestmentInput = document.getElementById('todayInvestment');
+    const todayGoldCalcInput = document.getElementById('todayGoldCalc');
+    const toastContainer = document.getElementById('toast-container');
+    const confirmModal = document.getElementById('confirmModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalMessage = document.getElementById('modalMessage');
+    const modalConfirmBtn = document.getElementById('modalConfirmBtn');
+
+    // UI Elements for calculations
+    const uiTodayGoldOutput = document.getElementById('uiTodayGoldOutput');
+    const uiPrevAmount = document.getElementById('uiPrevAmount');
+    const uiPrevGold = document.getElementById('uiPrevGold');
+    const uiGrandAmount = document.getElementById('uiGrandAmount');
+    const uiGrandGold = document.getElementById('uiGrandGold');
+    const uiAverageRateValue = document.getElementById('uiAverageRateValue');
+
+    // --- FORMATTERS ---
+    const formatCurrency = (val) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2 }).format(val || 0);
+    const formatWeight = (val) => new Intl.NumberFormat('en-IN', { minimumFractionDigits: 3, maximumFractionDigits: 3 }).format(val || 0) + ' g';
+    const formatRate = (val) => formatCurrency(val) + ' / g';
+    const parseNum = (val) => { const num = parseFloat(val); return (isNaN(num) || num < 0) ? 0 : num; };
+    const generateId = () => window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now();
+
+    // --- INIT ---
+    function init() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          state.purchases = parsed.purchases || [];
+          state.todayRate = parsed.todayRate || '';
+          state.todayInvestment = parsed.todayInvestment || '';
+          state.isDarkMode = !!parsed.isDarkMode;
+        } catch(e) { console.error("Storage error", e); }
+      }
+      
+      newDateInput.value = new Date().toISOString().split('T')[0];
+      todayRateInput.value = state.todayRate;
+      todayInvestmentInput.value = state.todayInvestment;
+      
+      applyTheme();
+      updateUI();
+      setupListeners();
+    }
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    // --- THEMING ---
+    function applyTheme() {
+      if (state.isDarkMode) {
+        htmlEl.classList.add('dark');
+        btnDark.classList.add('active');
+        btnLight.classList.remove('active');
+      } else {
+        htmlEl.classList.remove('dark');
+        btnLight.classList.add('active');
+        btnDark.classList.remove('active');
+      }
+      saveState();
+    }
+
+    // --- CALCULATIONS ---
+    function getCalculations() {
+      const prevAmount = state.purchases.reduce((sum, p) => sum + p.amount, 0);
+      const prevGold = state.purchases.reduce((sum, p) => sum + p.gold, 0);
+      
+      const tRate = parseNum(state.todayRate);
+      const tInvest = parseNum(state.todayInvestment);
+      const tGold = (tRate > 0) ? (tInvest / tRate) : 0;
+      
+      const grandAmount = prevAmount + tInvest;
+      const grandGold = prevGold + tGold;
+      const averageRate = grandGold > 0 ? (grandAmount / grandGold) : 0;
+
+      return { prevAmount, prevGold, tInvest, tGold, grandAmount, grandGold, averageRate };
+    }
+
+    // --- RENDER ---
+    function updateUI() {
+      renderTable();
+      updateSummary();
+      updateReceiptEngine(); // Sync data into HTML receipt layer
+      saveState();
+    }
+
+    function updateSummary() {
+      const calc = getCalculations();
+      
+      const formattedGold = formatWeight(calc.tGold);
+      todayGoldCalcInput.value = formattedGold;
+      uiTodayGoldOutput.innerText = formattedGold;
+
+      uiPrevAmount.innerText = formatCurrency(calc.prevAmount);
+      uiPrevGold.innerText = formatWeight(calc.prevGold);
+      uiGrandAmount.innerText = formatCurrency(calc.grandAmount);
+      uiGrandGold.innerText = formatWeight(calc.grandGold);
+      uiAverageRateValue.innerText = formatCurrency(calc.averageRate);
+    }
+
+    function renderTable() {
+      let data = [...state.purchases];
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        data = data.filter(p => p.date.includes(q) || p.amount.toString().includes(q) || p.rate.toString().includes(q));
+      }
+
+      data.sort((a, b) => {
+        const valA = a[sortConfig.key];
+        const valB = b[sortConfig.key];
+        if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+
+      ['date', 'amount', 'rate', 'gold'].forEach(key => {
+        const icon = document.getElementById(`sort-${key}`);
+        if (key === sortConfig.key) {
+          icon.innerHTML = sortConfig.direction === 'asc' ? '↑' : '↓';
+          icon.style.opacity = '1';
+        } else {
+          icon.innerHTML = '↕';
+          icon.style.opacity = '0.3';
+        }
+      });
+
+      tableBody.innerHTML = '';
+      if (data.length === 0) {
+        tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">${searchQuery ? 'No matching records' : 'No previous purchases'}</td></tr>`;
+        return;
+      }
+
+      data.forEach(p => {
+        const tr = document.createElement('tr');
+        
+        if (editingId === p.id) {
+          tr.innerHTML = `
+            <td><input type="date" id="editDate" value="${editForm.date}" class="input" style="padding:0.4rem; font-size:0.75rem;"></td>
+            <td class="text-right"><input type="number" id="editAmount" value="${editForm.amount}" min="0.01" step="0.01" class="input text-right" style="padding:0.4rem; font-size:0.75rem;"></td>
+            <td class="text-right"><input type="number" id="editRate" value="${editForm.rate}" min="0.01" step="0.01" class="input text-right" style="padding:0.4rem; font-size:0.75rem;"></td>
+            <td class="text-right" style="opacity:0.5; font-size:0.75rem;">Auto</td>
+            <td class="text-center">
+              <button class="action-btn save" onclick="saveEdit()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></button>
+              <button class="action-btn delete" onclick="cancelEdit()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg></button>
+            </td>
+          `;
+        } else {
+          tr.innerHTML = `
+            <td>${p.date}</td>
+            <td class="text-right">${formatCurrency(p.amount)}</td>
+            <td class="text-right" style="opacity:0.7;">${formatRate(p.rate)}</td>
+            <td class="text-right" style="font-weight:600;">${formatWeight(p.gold)}</td>
+            <td class="text-center">
+              <button class="action-btn edit" onclick="startEdit('${p.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>
+              <button class="action-btn delete" onclick="requestDelete('${p.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
+            </td>
+          `;
+        }
+        tableBody.appendChild(tr);
+      });
+    }
+
+    // --- RECEIPT ENGINE (Syncs DOM for Export) ---
+    function updateReceiptEngine() {
+      const calc = getCalculations();
+      
+      const now = new Date();
+      document.getElementById('rDate').innerText = now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+      document.getElementById('rTime').innerText = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+      
+      // Auto-generate a stable ID for the print session
+      document.getElementById('rReceiptId').innerText = `ID: TMJH-${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}-${Math.floor(1000 + Math.random() * 9000)}`;
+      
+      const tbody = document.getElementById('rTableBody');
+      tbody.innerHTML = '';
+      state.purchases.forEach(p => {
+        tbody.innerHTML += `
+          <tr>
+            <td>${p.date}</td>
+            <td>${formatCurrency(p.amount)}</td>
+            <td>${formatRate(p.rate)}</td>
+            <td style="font-weight: 600;">${formatWeight(p.gold)}</td>
+          </tr>
+        `;
+      });
+      
+      document.getElementById('rTodayRate').innerText = formatRate(parseNum(state.todayRate));
+      document.getElementById('rTodayInvestment').innerText = formatCurrency(calc.tInvest);
+      document.getElementById('rTodayGold').innerText = formatWeight(calc.tGold);
+      document.getElementById('rPrevAmount').innerText = formatCurrency(calc.prevAmount);
+      document.getElementById('rPrevGold').innerText = formatWeight(calc.prevGold);
+      document.getElementById('rGrandAmount').innerText = formatCurrency(calc.grandAmount);
+      document.getElementById('rGrandGold').innerText = formatWeight(calc.grandGold);
+      document.getElementById('rAverageRate').innerText = formatCurrency(calc.averageRate) + ' / g';
+    }
+
+    // --- EVENT HANDLERS ---
+    function setupListeners() {
+      btnLight.addEventListener('click', () => { state.isDarkMode = false; applyTheme(); });
+      btnDark.addEventListener('click', () => { state.isDarkMode = true; applyTheme(); });
+      
+      searchInput.addEventListener('input', (e) => {
+        searchQuery = e.target.value;
+        renderTable();
+      });
+
+      todayRateInput.addEventListener('input', (e) => {
+        state.todayRate = e.target.value;
+        updateUI();
+      });
+
+      todayInvestmentInput.addEventListener('input', (e) => {
+        state.todayInvestment = e.target.value;
+        updateUI();
+      });
+
+      addForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const date = newDateInput.value;
+        const amount = parseNum(newAmountInput.value);
+        const rate = parseNum(newRateInput.value);
+
+        if (!date || amount <= 0 || rate <= 0) {
+          showToast("Invalid inputs. Amount & Rate must be > 0.", "error");
+          return;
+        }
+
+        const isDuplicate = state.purchases.some(p => p.date === date && p.amount === amount && p.rate === rate);
+        if (isDuplicate) {
+          showToast("This exact purchase already exists.", "error");
+          return;
+        }
+
+        state.purchases.push({ id: generateId(), date, amount, rate, gold: amount / rate });
+
+        newAmountInput.value = '';
+        newRateInput.value = '';
+        showToast("Purchase added successfully.", "success");
+        updateUI();
+      });
+    }
+
+    window.handleSort = (key) => {
+      if (sortConfig.key === key) sortConfig.direction = sortConfig.direction === 'asc' ? 'desc' : 'asc';
+      else { sortConfig.key = key; sortConfig.direction = 'asc'; }
+      renderTable();
+    };
+
+    window.startEdit = (id) => {
+      const p = state.purchases.find(x => x.id === id);
+      if (!p) return;
+      editingId = id;
+      editForm = { date: p.date, amount: p.amount, rate: p.rate };
+      renderTable();
+      document.getElementById('editDate').addEventListener('input', e => editForm.date = e.target.value);
+      document.getElementById('editAmount').addEventListener('input', e => editForm.amount = e.target.value);
+      document.getElementById('editRate').addEventListener('input', e => editForm.rate = e.target.value);
+    };
+
+    window.cancelEdit = () => { editingId = null; renderTable(); };
+
+    window.saveEdit = () => {
+      const amount = parseNum(editForm.amount);
+      const rate = parseNum(editForm.rate);
+      if (!editForm.date || amount <= 0 || rate <= 0) return showToast("Invalid values.", "error");
+
+      const idx = state.purchases.findIndex(x => x.id === editingId);
+      if (idx !== -1) {
+        state.purchases[idx] = { ...state.purchases[idx], date: editForm.date, amount, rate, gold: amount / rate };
+        showToast("Purchase updated.", "success");
+      }
+      editingId = null;
+      updateUI();
+    };
+
+    window.requestDelete = (id) => {
+      openModal("Delete Purchase", "Are you sure you want to remove this record?", () => {
+        state.purchases = state.purchases.filter(p => p.id !== id);
+        showToast("Purchase deleted.", "success");
+        updateUI();
+      });
+    };
+
+    window.requestReset = () => {
+      openModal("Reset Calculator", "This will permanently clear all inputs and purchases. Proceed?", () => {
+        state.purchases = [];
+        state.todayRate = '';
+        state.todayInvestment = '';
+        todayRateInput.value = '';
+        todayInvestmentInput.value = '';
+        newAmountInput.value = '';
+        newRateInput.value = '';
+        showToast("Calculator reset successfully.", "success");
+        updateUI();
+      });
+    };
+
+    // --- MODALS & TOASTS ---
+    function showToast(message, type = 'success') {
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      const icon = type === 'success' 
+        ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>'
+        : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>';
+      toast.innerHTML = `${icon} <span>${message}</span>`;
+      toastContainer.appendChild(toast);
+      setTimeout(() => { toast.style.animation = 'fadeOut 0.3s ease forwards'; setTimeout(() => toast.remove(), 300); }, 3000);
+    }
+
+    function openModal(title, message, onConfirm) {
+      modalTitle.innerText = title;
+      modalMessage.innerText = message;
+      modalAction = onConfirm;
+      confirmModal.classList.add('active');
+    }
+    window.closeModal = () => { confirmModal.classList.remove('active'); modalAction = null; };
+    modalConfirmBtn.addEventListener('click', () => { if (modalAction) modalAction(); closeModal(); });
+
+    // --- PDF & PRINT EXPORT ENGINE ---
+    
+    // Offline Native Print uses the exactly same HTML container via CSS @media print
+    window.triggerPrint = () => {
+      updateReceiptEngine();
+      window.print();
+    };
+
+    // HTML2Canvas -> jsPDF Export Flow
+    window.triggerPDFDownload = async () => {
+      showToast("Generating High-Quality PDF...", "success");
+      
+      try {
+        updateReceiptEngine();
+        const wrapper = document.getElementById('pdfReceiptWrapper');
+        
+        // Wait for fonts and the logo.png to ensure they render on canvas
+        await document.fonts.ready;
+        await new Promise((resolve) => {
+          const img = wrapper.querySelector('img');
+          if (img.complete) return resolve();
+          img.onload = resolve;
+          img.onerror = resolve;
+        });
+
+        // Temporarily bring the wrapper into layout for html2canvas mapping
+        const originalLeft = wrapper.style.left;
+        wrapper.style.left = '0';
+        wrapper.style.zIndex = '-9999';
+
+        // Snap sharp canvas directly from DOM
+        const canvas = await html2canvas(wrapper, {
+          scale: 3, 
+          backgroundColor: '#FFFFFF',
+          useCORS: true,
+          allowTaint: true,
+          windowWidth: wrapper.scrollWidth,
+          windowHeight: wrapper.scrollHeight
+        });
+
+        // Hide it again
+        wrapper.style.left = originalLeft;
+
+        const imgData = canvas.toDataURL('image/jpeg', 1.0);
+        
+        // Export cleanly into jsPDF A4 Layout (A4 format = 210 x 297 mm, scaling to match HTML width)
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+        
+        // Ensure perfect fit
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+        pdf.save(`TMJH_Receipt_${new Date().getTime()}.pdf`);
+        
+        showToast("PDF Downloaded successfully", "success");
+      } catch (e) {
+        console.error("PDF Export Error:", e);
+        showToast("Failed to generate PDF.", "error");
+      }
+    };
+
+    // Bootstrap
+    document.addEventListener('DOMContentLoaded', init);
+
+  </script>
+</body>
+</html>
